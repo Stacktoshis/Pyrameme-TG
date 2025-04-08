@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -83,7 +83,8 @@
       border-right: 2px solid var(--gold);
     }
     #humbuggerDrawer.open { transform: translateX(0); }
-    #humbuggerDrawer button {
+    /* General button styles for the drawer except for the close button */
+    #humbuggerDrawer button:not(#drawerCloseBtn) {
       display: block;
       width: 100%;
       margin: 10px 0;
@@ -93,6 +94,20 @@
       color: var(--gold);
       border-radius: 5px;
       cursor: pointer;
+      font-family: 'MedievalSharp', cursive;
+      text-transform: uppercase;
+    }
+    /* New styling for the close button placed at the top-right corner */
+    #drawerCloseBtn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: var(--hieroglyphic-brown);
+      color: var(--gold);
+      border: 2px solid var(--gold);
+      border-radius: 5px;
+      cursor: pointer;
+      padding: 5px 8px;
       font-family: 'MedievalSharp', cursive;
       text-transform: uppercase;
     }
@@ -128,7 +143,28 @@
       font-family: 'MedievalSharp', cursive;
       text-transform: uppercase;
     }
-   
+    /* Confetti container (for animation) */
+    #confettiContainer {
+      pointer-events: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 999;
+    }
+    .confetti-piece {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      opacity: 1;
+      animation: confetti-fall 2s linear forwards;
+    }
+    @keyframes confetti-fall {
+      0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+    }
+    /* Removed advertBanner styles for Telegram compliance */
     #toastContainer {
       position: fixed;
       bottom: 120px;
@@ -206,7 +242,6 @@
       <li>Welcome! Truth seeker.</li> 
       <li>By playing this game, you agree to</li> 
       <li>Telegram's Terms and Conditions.</li>
-      
     </ul>
     <button id="acceptTerms">Accept</button>
   </div>
@@ -224,7 +259,7 @@
     <div class="card" id="scoreCard"><span id="score">𓃭 Score: 0</span></div>
     <div class="card" id="highScoreCard"><span id="highScore">𓀙 High Score: 0</span></div>
     <div class="card" id="walletCard"><span id="wallet">Wallet: 1000 Kem</span></div>
-    <div class="card" id="phaseCard"><span id="phaseTimerStrip">Phase: Claim (60 sec)</span></div>
+    <div class="card" id="phaseCard"><span id="phaseTimerStrip">Phase: Claim (10 sec)</span></div>
     <div class="card" id="profitLossCard"><span id="profitLoss">Profit/Loss: 0 Kem</span></div>
   </div>
   <canvas id="gameCanvas" width="600" height="600"></canvas>
@@ -235,11 +270,15 @@
     <button id="closeModal">Restart</button>
   </div>
   <div id="toastContainer"></div>
+  <!-- New Round button added so a new round can start any time -->
   <div id="bottomBar">
     <button id="hintBtn">Hint (10 Kem)</button>
     <button id="shareBtn">𓀣 Share Your Victory</button>
+    <button id="newRoundBtn">New Round</button>
   </div>
   <div id="tooltip" class="tooltip"></div>
+  <!-- Confetti container for visual effects -->
+  <div id="confettiContainer"></div>
   <script>
     // Telegram WebApp initialization
     Telegram.WebApp.ready();
@@ -255,7 +294,7 @@
     let playerKemWallet = "";
     let playerClaimed = false;
     const PARKING_FEE_PER_CELL = 5;
-    const CLAIM_DURATION = 60;
+    const CLAIM_DURATION = 10;  // Reduced cell claim time to 10 seconds
     const PLAY_DURATION = 300;
     let gamePhase = "claim";
     let phaseTime = CLAIM_DURATION;
@@ -270,6 +309,7 @@
     const profitLossDisplay = document.getElementById("profitLoss");
     const shareBtn = document.getElementById("shareBtn");
     const hintBtn = document.getElementById("hintBtn");
+    const newRoundBtn = document.getElementById("newRoundBtn");
     const tooltip = document.getElementById("tooltip");
     const modalOverlay = document.getElementById("modalOverlay");
     const modalTitle = document.getElementById("modalTitle");
@@ -280,6 +320,29 @@
     const achievementsBtn = document.getElementById("achievementsBtn");
     const buyKemBtn = document.getElementById("buyKemBtn");
     const acceptTerms = document.getElementById("acceptTerms");
+
+    // Confetti function: creates confetti pieces and removes them after animation
+    function triggerConfetti() {
+      const confettiContainer = document.getElementById("confettiContainer");
+      const colors = ['#FFD700', '#FF4500', '#00FFFF', '#FF69B4', '#ADFF2F'];
+      const pieces = 30;
+      for (let i = 0; i < pieces; i++) {
+        let confetti = document.createElement("div");
+        confetti.classList.add("confetti-piece");
+        // Randomize starting position and color
+        confetti.style.left = Math.random() * 100 + '%';
+        confetti.style.top = -10 + 'px';
+        confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
+        // Random delay so pieces don't fall at the same time
+        confetti.style.animationDelay = Math.random() * 0.5 + 's';
+        confettiContainer.appendChild(confetti);
+      }
+      // Remove confetti after 2.5 seconds
+      setTimeout(() => {
+        confettiContainer.innerHTML = "";
+      }, 2500);
+    }
 
     // Terms and Conditions acceptance
     acceptTerms.addEventListener("click", () => {
@@ -397,7 +460,7 @@
       draw() {
         const x = this.col * CELL_SIZE, y = this.row * CELL_SIZE;
         ctx.strokeStyle = "var(--maze-wall)";
-        ctx.lineWidth = 4;
+        ctx.lineWidth = 6; // Increased thickness for maze walls
         if (this.walls.top) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + CELL_SIZE, y); ctx.stroke(); }
         if (this.walls.right) { ctx.beginPath(); ctx.moveTo(x + CELL_SIZE, y); ctx.lineTo(x + CELL_SIZE, y + CELL_SIZE); ctx.stroke(); }
         if (this.walls.bottom) { ctx.beginPath(); ctx.moveTo(x + CELL_SIZE, y + CELL_SIZE); ctx.lineTo(x, y + CELL_SIZE); ctx.stroke(); }
@@ -552,9 +615,11 @@
           showToast(`+${t.value} Kem`);
         }
       });
+      // Trigger milestone confetti when all treasures are collected
       if (treasures.every(t => t.collected)) {
         achievements.treasureHunter = true;
         showToast("Achievement: Treasure Hunter!");
+        triggerConfetti();
       }
     }
     canvas.addEventListener("click", (e) => {
@@ -588,6 +653,7 @@
           cell.nickname = playerNickname;
           playerClaimed = true;
           showToast(`Claimed cell (${cellCol},${cellRow}) for ${cost} Kem!`);
+          triggerConfetti(); // Confetti for claiming a cell
           drawGame();
         }
       } else if (gamePhase === "play" && player) {
@@ -688,6 +754,7 @@
       updateLeaderboard();
       checkAchievements();
       showVictoryScreen(message);
+      triggerConfetti(); // Confetti at milestone: finishing the round
     }
     function showVictoryScreen(message) {
       modalTitle.textContent = message;
@@ -740,7 +807,14 @@
     const drawerCloseBtn = document.getElementById("drawerCloseBtn");
     openDrawerBtn.addEventListener("click", () => humbuggerDrawer.classList.add("open"));
     drawerCloseBtn.addEventListener("click", () => humbuggerDrawer.classList.remove("open"));
-
+    // Close the drawer if clicking outside of it
+    document.addEventListener("click", function(event) {
+      if (humbuggerDrawer.classList.contains("open") && 
+          !humbuggerDrawer.contains(event.target) && 
+          event.target !== openDrawerBtn) {
+        humbuggerDrawer.classList.remove("open");
+      }
+    });
     shareBtn.addEventListener('click', async () => {
       const shareData = {
         title: 'Pyrameme Quest',
@@ -771,12 +845,14 @@
         drawGame();
       }, 3000);
     });
+    newRoundBtn.addEventListener('click', () => {
+      newRound(); // Allow starting a new round at any time
+    });
     tutorialBtn.addEventListener('click', () => {
-      alert("Tutorial:\n- Claim Phase: Click on a cell to claim it. You’ll be prompted for your nickname and Initials.\n- Play Phase: Navigate the maze from your claimed cell. A 5 Kem parking fee is deducted when you step onto a cell not claimed by you.\n- Hint (10 Kem): Displays a solution path for 3 seconds.\n- If you run out of Kem, use the Buy Kem option from the menu.\n- By playing, you agree to Telegram's Terms and Conditions.");
+      alert("Tutorial:\n- Claim Phase: Click on a cell to claim it. You’ll be prompted for your nickname and Initials.\n- Play Phase: Navigate the maze from your claimed cell. A 5 Kem parking fee is deducted when you step onto a cell not claimed by you.\n- Hint (10 Kem): Displays a solution path for 3 seconds.\n- You can start a new round at any time using the New Round button.\n- By playing, you agree to Telegram's Terms and Conditions.");
     });
     leaderboardBtn.addEventListener('click', showLeaderboard);
     achievementsBtn.addEventListener('click', () => alert(displayAchievements()));
-
     // Telegram Stars purchase integration simulation
     buyKemBtn.addEventListener('click', () => {
       if (confirm("Buy 500 Kem tokens for 100 Telegram Stars?")) {
@@ -785,7 +861,6 @@
         showToast("Purchase successful! 500 Kem tokens added.");
       }
     });
-
     function findSolutionPaths() {
       const start = [player.col, player.row], goal = [exitCell.col, exitCell.row];
       let paths = [];
@@ -812,7 +887,6 @@
       dfs(start[0], start[1], []);
       return paths;
     }
-
     function initGame() {
       gameOver = false;
       score = 0;
@@ -829,7 +903,6 @@
       drawGame();
       startPhaseTimer();
     }
-
     // Game initialization will begin after Terms acceptance
     setInterval(drawGame, 30);
   </script>
