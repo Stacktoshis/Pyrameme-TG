@@ -258,7 +258,7 @@
   <div id="hud">
     <div class="card" id="scoreCard"><span id="score">𓃭 Score: 0</span></div>
     <div class="card" id="highScoreCard"><span id="highScore">𓀙 High Score: 0</span></div>
-    <div class="card" id="walletCard"><span id="wallet">Wallet: 1000 Kem</span></div>
+    <div class="card" id="walletCard"><span id="wallet">Wallet: 224 Kem</span></div>
     <div class="card" id="phaseCard"><span id="phaseTimerStrip">Phase: Claim (10 sec)</span></div>
     <div class="card" id="profitLossCard"><span id="profitLoss">Profit/Loss: 0 Kem</span></div>
   </div>
@@ -283,7 +283,7 @@
     // Telegram WebApp initialization
     Telegram.WebApp.ready();
 
-    let walletBalance = 1000;
+    let walletBalance = 224;  // Initial balance reduced to 224
     let totalProfit = 0;
     let totalLoss = 0;
     let hintPaths = [];
@@ -294,7 +294,7 @@
     let playerKemWallet = "";
     let playerClaimed = false;
     const PARKING_FEE_PER_CELL = 5;
-    const CLAIM_DURATION = 10;  // Reduced cell claim time to 10 seconds
+    const CLAIM_DURATION = 10;  // Claim time remains 10 sec
     const PLAY_DURATION = 300;
     let gamePhase = "claim";
     let phaseTime = CLAIM_DURATION;
@@ -527,7 +527,8 @@
         let col = Math.floor(Math.random() * COLS);
         let row = Math.floor(Math.random() * ROWS);
         if (!treasures.find(t => t.col === col && t.row === row)) {
-          let value = Math.floor(Math.sqrt(col * col + row * row)) * 5;
+          // Adjust treasure reward: base value 5 plus 7 times the floor of the Euclidean distance
+          let value = 5 + Math.floor(Math.sqrt(col * col + row * row) * 7);
           treasures.push({ col, row, collected: false, value });
         }
       }
@@ -653,7 +654,7 @@
           cell.nickname = playerNickname;
           playerClaimed = true;
           showToast(`Claimed cell (${cellCol},${cellRow}) for ${cost} Kem!`);
-          triggerConfetti(); // Confetti for claiming a cell
+          triggerConfetti(); // Confetti when a cell is claimed
           drawGame();
         }
       } else if (gamePhase === "play" && player) {
@@ -754,7 +755,7 @@
       updateLeaderboard();
       checkAchievements();
       showVictoryScreen(message);
-      triggerConfetti(); // Confetti at milestone: finishing the round
+      triggerConfetti(); // Confetti when a milestone is reached (end game)
     }
     function showVictoryScreen(message) {
       modalTitle.textContent = message;
